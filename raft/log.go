@@ -40,6 +40,7 @@ type RaftLog struct {
 	// log entries with index <= stabled are persisted to storage.
 	// It is used to record the logs that are not persisted by storage yet.
 	// Everytime handling `Ready`, the unstabled logs will be included.
+	// 被持久化的最后一个日志条目的 index
 	stabled uint64
 
 	// all entries that have not yet compact.
@@ -56,7 +57,40 @@ type RaftLog struct {
 // to the state that it just commits and applies the latest snapshot.
 func newLog(storage Storage) *RaftLog {
 	// Your Code Here (2A).
-	return nil
+	firstIndex, err := storage.FirstIndex()
+	if err != nil {
+		panic("newLog")
+	}
+
+	lastIndex, err := storage.LastIndex()
+	if err != nil {
+		panic("newLog")
+	}
+
+	entries, err := storage.Entries(firstIndex, lastIndex)
+	if err != nil {
+		panic("newLog")
+	}
+
+	snapshot, err := storage.Snapshot()
+	if err != nil {
+		panic("newLog")
+	}
+
+	hs, _, err := storage.InitialState()
+	if err != nil {
+		panic("newLog")
+	}
+
+	l := &RaftLog{
+		storage:         storage,
+		committed:       hs.Commit,
+		applied:         hs.Commit,
+		stabled:         lastIndex,
+		entries:         entries,
+		pendingSnapshot: &snapshot,
+	}
+	return l
 }
 
 // We need to compact the log entries in some point of time like
@@ -71,25 +105,27 @@ func (l *RaftLog) maybeCompact() {
 // note, this is one of the test stub functions you need to implement.
 func (l *RaftLog) allEntries() []pb.Entry {
 	// Your Code Here (2A).
-	return nil
+	return l.entries
 }
 
 // unstableEntries return all the unstable entries
 func (l *RaftLog) unstableEntries() []pb.Entry {
 	// Your Code Here (2A).
-	return nil
+	return l.entries[1:]
 }
 
 // nextEnts returns all the committed but not applied entries
 func (l *RaftLog) nextEnts() (ents []pb.Entry) {
 	// Your Code Here (2A).
-	return nil
+	arrCommitted := l.committed - l.stabled
+	ents = append(ents, l.entries[:arrCommitted]...)
+	return
 }
 
 // LastIndex return the last index of the log entries
 func (l *RaftLog) LastIndex() uint64 {
 	// Your Code Here (2A).
-	return 0
+	return l.stabled + uint64(len(l.entries)) - 1
 }
 
 // Term return the term of the entry in the given index

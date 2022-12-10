@@ -165,7 +165,14 @@ func newRaft(c *Config) *Raft {
 		panic(err.Error())
 	}
 	// Your Code Here (2A).
-	return nil
+	raft := &Raft{
+		id:               c.ID,
+		heartbeatTimeout: c.HeartbeatTick,
+		electionTimeout:  c.ElectionTick,
+	}
+	// read snapshot
+	c.Storage.Snapshot()
+	return raft
 }
 
 // sendAppend sends an append RPC with new entries (if any) and the
@@ -178,6 +185,20 @@ func (r *Raft) sendAppend(to uint64) bool {
 // sendHeartbeat sends a heartbeat RPC to the given peer.
 func (r *Raft) sendHeartbeat(to uint64) {
 	// Your Code Here (2A).
+	index := r.RaftLog.LastIndex()
+	logTerm, err := r.RaftLog.Term(index)
+	if err != nil {
+		panic("sendHeartbeat")
+	}
+	r.msgs = append(r.msgs, pb.Message{
+		MsgType: pb.MessageType_MsgBeat,
+		From:    r.id,
+		To:      to,
+		Term:    r.Term,
+		LogTerm: logTerm,
+		Index:   index,
+		Entries: ,
+	})
 }
 
 // tick advances the internal logical clock by a single tick.
